@@ -1,0 +1,51 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: कोड डाउनलोड
+        uses: actions/checkout@v4
+
+      - name: Java लगाना
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Flutter लगाना
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Android फ़ोल्डर बनाना
+        run: |
+          flutter create --platforms=android --org com.mohit --project-name shiv_darshan ../scaffold
+          cp -r ../scaffold/android ./android
+          sed -i 's/android:label="[^"]*"/android:label="शिव दर्शन"/' android/app/src/main/AndroidManifest.xml
+
+      - name: ऐप आइकन (त्रिशूल) लगाना
+        run: |
+          rm -rf android/app/src/main/res/mipmap-anydpi*
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p android/app/src/main/res/mipmap-$d
+            cp icons/mipmap-$d/ic_launcher.png android/app/src/main/res/mipmap-$d/ic_launcher.png
+          done
+
+      - name: Packages लाना
+        run: flutter pub get
+
+      - name: APK बनाना
+        run: flutter build apk --release
+
+      - name: APK सेव करना
+        uses: actions/upload-artifact@v4
+        with:
+          name: shiv-darshan-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
