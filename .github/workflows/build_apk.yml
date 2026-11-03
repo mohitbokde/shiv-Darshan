@@ -26,8 +26,13 @@ jobs:
 
       - name: Android फ़ोल्डर बनाना
         run: |
-          flutter create --platforms=android --org com.mohit --project-name shiv_darshan ../scaffold
-          cp -r ../scaffold/android ./android
+          mkdir -p /tmp/keep
+          cp -r lib /tmp/keep/lib
+          cp pubspec.yaml /tmp/keep/pubspec.yaml
+          flutter create --platforms=android --org com.mohit --project-name shiv_darshan .
+          rm -rf lib pubspec.yaml test
+          cp -r /tmp/keep/lib lib
+          cp /tmp/keep/pubspec.yaml pubspec.yaml
           sed -i 's/android:label="[^"]*"/android:label="शिव दर्शन"/' android/app/src/main/AndroidManifest.xml
 
       - name: ऐप आइकन (त्रिशूल) लगाना
@@ -42,7 +47,17 @@ jobs:
         run: flutter pub get
 
       - name: APK बनाना
-        run: flutter build apk --release
+        run: |
+          set +e
+          flutter build apk --release 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            sed -n '/What went wrong/,/\* Try/p' build.log | head -40 > err.txt
+            [ -s err.txt ] || tail -30 build.log > err.txt
+            msg=$(sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g' err.txt)
+            echo "::error title=असली-एरर::$msg"
+            exit "$code"
+          fi
 
       - name: APK सेव करना
         uses: actions/upload-artifact@v4
